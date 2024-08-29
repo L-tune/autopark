@@ -1,0 +1,71 @@
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Управление автопарком</title>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            h1 { color: #333; }
+            #carList { list-style-type: none; padding: 0; }
+            #carList li { background: #f4f4f4; margin-bottom: 10px; padding: 10px; border-radius: 5px; }
+            form { background: #eee; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+            input { width: 100%; padding: 10px; margin-bottom: 10px; }
+            button { background: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }
+        </style>
+    </head>
+    <body>
+        <h1>Управление автопарком</h1>
+        <form id="carForm">
+            <input type="text" id="brand" placeholder="Марка" required>
+            <input type="text" id="model" placeholder="Модель" required>
+            <input type="number" id="year" placeholder="Год выпуска" required>
+            <input type="text" id="number" placeholder="Номер" required>
+            <input type="date" id="insurance" placeholder="Дата истечения страховки" required>
+            <input type="date" id="inspection" placeholder="Дата истечения техосмотра" required>
+            <button type="submit">Добавить автомобиль</button>
+        </form>
+
+        <h2>Список автомобилей</h2>
+        <ul id="carList"></ul>
+
+        <script>
+            const API_URL = '/api';
+
+            async function fetchCars() {
+                const response = await fetch(`${API_URL}/cars`);
+                const cars = await response.json();
+                const carList = document.getElementById('carList');
+                carList.innerHTML = cars.map(car => `
+                    <li>
+                        ${car.brand} ${car.model} (${car.year}) - ${car.number}
+                        <br>Страховка до: ${car.insurance}
+                        <br>Техосмотр до: ${car.inspection}
+                    </li>
+                `).join('');
+            }
+
+            document.getElementById('carForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const car = {
+                    brand: document.getElementById('brand').value,
+                    model: document.getElementById('model').value,
+                    year: document.getElementById('year').value,
+                    number: document.getElementById('number').value,
+                    insurance: document.getElementById('insurance').value,
+                    inspection: document.getElementById('inspection').value
+                };
+                await fetch(`${API_URL}/cars`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(car)
+                });
+                fetchCars();
+                e.target.reset();
+            });
+
+            fetchCars();
+        </script>
+    </body>
+    </html>
