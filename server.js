@@ -1,15 +1,23 @@
+require('dotenv').config();
+console.log('Environment variables loaded:', 
+  process.env.AIRTABLE_ACCESS_TOKEN ? 'Access Token set' : 'Access Token not set', 
+  process.env.AIRTABLE_BASE_ID ? 'Base ID set' : 'Base ID not set'
+);
+
 const express = require('express');
 const app = express();
 const path = require('path');
-const Airtable = require('airtable');
 const airtable = require('./airtable');
-
-// Настройка Airtable
-const base = new Airtable({apiKey: 'patbrJG7AijGrgh5B.c409de248e874e7c3a0221945f51941e2aa4a07b476af38834c62c5ca4994ef5'}).base('appVTAs48STHKWGSF');
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Маршрут для корневой страницы
 app.get('/', (req, res) => {
@@ -33,7 +41,7 @@ app.post('/api/cars', async (req, res) => {
     res.json({ id });
   } catch (error) {
     console.error('Ошибка при добавлении автомобиля:', error);
-    res.status(500).json({ error: 'Не удалось добавить автомобиль' });
+    res.status(500).json({ error: 'Не удалось добавиь автомобиль' });
   }
 });
 
@@ -53,8 +61,14 @@ app.delete('/api/cars/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Ошибка при удалении автомобиля:', error);
-    res.status(500).json({ error: 'Не удалось удалить автомобиль' });
+    res.status(500).json({ error: 'Не удлось удалить автомобиль' });
   }
+});
+
+// Обработка ошибок
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Что-то пошло не так!');
 });
 
 // Запуск сервера

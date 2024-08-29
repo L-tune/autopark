@@ -12,19 +12,21 @@
             #carList li { background: #f4f4f4; margin-bottom: 10px; padding: 10px; border-radius: 5px; }
             form { background: #eee; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
             input { width: 100%; padding: 10px; margin-bottom: 10px; }
-            button { background: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }
+            button { background: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; margin-right: 5px; }
+            .delete-btn { background: #f44336; }
+            .edit-btn { background: #2196F3; }
         </style>
     </head>
     <body>
         <h1>Управление автопарком</h1>
         <form id="carForm">
+            <input type="hidden" id="carId">
             <input type="text" id="brand" placeholder="Марка" required>
-            <input type="text" id="model" placeholder="Модель" required>
             <input type="number" id="year" placeholder="Год выпуска" required>
-            <input type="text" id="number" placeholder="Номер" required>
-            <input type="date" id="insurance" placeholder="Дата истечения страховки" required>
-            <input type="date" id="inspection" placeholder="Дата истечения техосмотра" required>
-            <button type="submit">Добавить автомобиль</button>
+            <input type="date" id="lastInspection" placeholder="Дата последнего ТО" required>
+            <input type="date" id="nextInspection" placeholder="Дата следующего ТО" required>
+            <button type="submit" id="submitBtn">Добавить автомобиль</button>
+            <button type="button" id="cancelBtn" style="display: none;">Отмена</button>
         </form>
 
         <h2>Список автомобилей</h2>
@@ -32,38 +34,103 @@
 
         <script>
             const API_URL = '/api';
+            let editingCarId = null;
 
             async function fetchCars() {
                 const response = await fetch(`${API_URL}/cars`);
                 const cars = await response.json();
                 const carList = document.getElementById('carList');
                 carList.innerHTML = cars.map(car => `
-                    <li>
-                        ${car.brand} ${car.model} (${car.year}) - ${car.number}
-                        <br>Страховка до: ${car.insurance}
-                        <br>Техосмотр до: ${car.inspection}
+                    <li data-id="${car.id}">
+                        ${car.brand} (${car.year})
+                        <br>Последнее ТО: ${car.lastInspection}
+                        <br>Следующее ТО: ${car.nextInspection}
+                        <br>
+                        <button class="edit-btn">Редактировать</button>
+                        <button class="delete-btn">Удалить</button>
                     </li>
                 `).join('');
+
+                carList.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', editCar);
+                });
+                carList.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', deleteCar);
+                });
             }
 
-            document.getElementById('carForm').addEventListener('submit', async (e) => {
+            async function handleSubmit(e) {
                 e.preventDefault();
                 const car = {
                     brand: document.getElementById('brand').value,
-                    model: document.getElementById('model').value,
                     year: document.getElementById('year').value,
-                    number: document.getElementById('number').value,
-                    insurance: document.getElementById('insurance').value,
-                    inspection: document.getElementById('inspection').value
+                    lastInspection: document.getElementById('lastInspection').value,
+                    nextInspection: document.getElementById('nextInspection').value
                 };
+
+                if (editingCarId) {
+                    await updateCar(editingCarId, car);
+                } else {
+                    await addCar(car);
+                }
+
+                resetForm();
+                fetchCars();
+            }
+
+            async function addCar(car) {
                 await fetch(`${API_URL}/cars`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(car)
                 });
+            }
+
+            async function updateCar(id, car) {
+                await fetch(`${API_URL}/cars/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(car)
+                });
+            }
+
+            async function deleteCar(e) {
+                const li = e.target.closest('li');
+                const id = li.dataset.id;
+                await fetch(`${API_URL}/cars/${id}`, { method: 'DELETE' });
                 fetchCars();
-                e.target.reset();
-            });
+            }
+
+            function editCar(e) {
+                const li = e.target.closest('li');
+                const id = li.dataset.id;
+                editingCarId = id;
+
+                const car = {
+                    brand: li.textContent.match(/^(.*?)\s/)[1],
+                    year: li.textContent.match(/\((\d+)\)/)[1],
+                    lastInspection: li.textContent.match(/Последнее ТО: (.*?)\n/)[1],
+                    nextInspection: li.textContent.match(/Следующее ТО: (.*?)$/)[1]
+                };
+
+                document.getElementById('brand').value = car.brand;
+                document.getElementById('year').value = car.year;
+                document.getElementById('lastInspection').value = car.lastInspection;
+                document.getElementById('nextInspection').value = car.nextInspection;
+
+                document.getElementById('submitBtn').textContent = 'Обновить автомобиль';
+                document.getElementById('cancelBtn').style.display = 'inline-block';
+            }
+
+            function resetForm() {
+                document.getElementById('carForm').reset();
+                editingCarId = null;
+                document.getElementById('submitBtn').textContent = 'Добавить автомобиль';
+                document.getElementById('cancelBtn').style.display = 'none';
+            }
+
+            document.getElementById('carForm').addEventListener('submit', handleSubmit);
+            document.getElementById('cancelBtn').addEventListener('click', resetForm);
 
             fetchCars();
         </script>
