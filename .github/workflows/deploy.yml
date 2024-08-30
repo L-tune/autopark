@@ -3,12 +3,15 @@ name: Deploy to Server
 on:
   push:
     branches:
-      - main
+      - main  # или master, в зависимости от названия вашей основной ветки
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
     - name: Deploy to server
       uses: appleboy/ssh-action@master
       with:
@@ -17,4 +20,6 @@ jobs:
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
           cd /root/autopark
-          ./update.sh
+          git pull origin main
+          npm install
+          pm2 restart all
